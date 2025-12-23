@@ -11,6 +11,10 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
 {
     public partial class WinSettings : Window
     {
+        private const string SettingKeyApiKey = "API Key";
+        private const string SettingKeyBaseUrl = "Base Url";
+        private const string SettingKeyModelName = "Model Name";
+
         private readonly IMainWindow _mw;
         private readonly ScreenMonitorPlugin _plugin;
 
@@ -31,6 +35,41 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             TbIntervalSeconds.Text = Math.Max(1, intervalMs / 1000).ToString(CultureInfo.InvariantCulture);
 
             LoadMonitors();
+
+            // Load API settings
+            PbApiKey.Password = GetApiKey() ?? string.Empty;
+            TbBaseUrl.Text = GetBaseUrl() ?? string.Empty;
+            TbModelName.Text = GetModelName() ?? string.Empty;
+        }
+
+        private string? GetApiKey()
+        {
+            return _mw.Set["screenmonitor"].GetString(SettingKeyApiKey, null);
+        }
+
+        private void SetApiKey(string? apiKey)
+        {
+            _mw.Set["screenmonitor"].SetString(SettingKeyApiKey, apiKey ?? string.Empty);
+        }
+
+        private string? GetBaseUrl()
+        {
+            return _mw.Set["screenmonitor"].GetString(SettingKeyBaseUrl, null);
+        }
+
+        private void SetBaseUrl(string? baseUrl)
+        {
+            _mw.Set["screenmonitor"].SetString(SettingKeyBaseUrl, baseUrl ?? string.Empty);
+        }
+
+        private string? GetModelName()
+        {
+            return _mw.Set["screenmonitor"].GetString(SettingKeyModelName, null);
+        }
+
+        private void SetModelName(string? modelName)
+        {
+            _mw.Set["screenmonitor"].SetString(SettingKeyModelName, modelName ?? string.Empty);
         }
 
         private string? GetMonitorDeviceName()
@@ -108,6 +147,10 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
 
             if (CbMonitor.SelectedItem is MonitorOption opt)
                 SetMonitorDeviceName(opt.DeviceName);
+
+            SetApiKey(PbApiKey.Password?.Trim());
+            SetBaseUrl(TbBaseUrl.Text?.Trim());
+            SetModelName(TbModelName.Text?.Trim());
 
             // 让新频率立即生效
             _plugin.ApplySettingsFromMW();

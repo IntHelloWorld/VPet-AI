@@ -503,10 +503,6 @@
                                 <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 开发者设置}" /><LineBreak />
                                 <Run Text="{ll:Str 启用开发者相关功能}" />
                         </TextBlock>
-                        <Button x:Name="BtnScreenMonitorSetting" Margin="4" Padding="1"
-                            pu:ButtonHelper.CornerRadius="4" Background="{DynamicResource SecondaryLight}"
-                            Click="BtnScreenMonitorSetting_Click" Content="{ll:Str 屏幕监控设置}"
-                            ToolTip="{ll:Str 打开屏幕监控插件设置}" />
                         <pu:Switch x:Name="ConsoleBox" Grid.Column="2" Background="Transparent"
                                 BorderBrush="{DynamicResource PrimaryDark}" BoxHeight="18" BoxWidth="35"
                                 Checked="ConsoleBox_Checked" CheckedBackground="{DynamicResource Primary}"
@@ -514,6 +510,50 @@
                                 CheckedToggleBrush="{DynamicResource DARKPrimaryText}"
                                 Content="{ll:Str '启用开发者控制台, 重启后生效'}" ToggleBrush="{DynamicResource PrimaryDark}"
                                 ToggleShadowColor="{x:Null}" ToggleSize="14" Unchecked="ConsoleBox_Checked" />
+                        <TextBlock Margin="0,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Background="{x:Null}" TextWrapping="Wrap">
+                            <Run FontSize="18" FontWeight="Bold" Text="{ll:Str 屏幕监控}" /><LineBreak />
+                            <Run Text="{ll:Str 配置屏幕监控与多模态接口}" />
+                        </TextBlock>
+                        <Grid Margin="0,5,0,0">
+                            <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="15" />
+                            <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="{ll:Str 监控频率(秒)}" />
+                            <pu:NumberInput x:Name="NumScreenMonitorIntervalSeconds" Grid.Row="0" Grid.Column="2" Margin="0,1,0,1"
+                                BorderBrush="{DynamicResource PrimaryDarker}" BorderThickness="1.5" CornerRadius="4"
+                                Minimum="1" ValueChanged="NumScreenMonitorIntervalSeconds_ValueChanged" />
+
+                            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{ll:Str 截取显示器}" />
+                            <ComboBox x:Name="CbScreenMonitorMonitor" Grid.Row="1" Grid.Column="2" FontSize="16"
+                                Style="{DynamicResource StandardComboBoxStyle}"
+                                SelectionChanged="CbScreenMonitorMonitor_SelectionChanged" />
+
+                            <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="{ll:Str API Key}" />
+                            <TextBox x:Name="TbScreenMonitorApiKey" Grid.Row="2" Grid.Column="2" FontSize="16"
+                                Style="{DynamicResource StandardTextBoxStyle}"
+                                TextChanged="TbScreenMonitorApiKey_TextChanged" />
+
+                            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="{ll:Str Base Url}" />
+                            <TextBox x:Name="TbScreenMonitorBaseUrl" Grid.Row="3" Grid.Column="2" FontSize="16"
+                                Style="{DynamicResource StandardTextBoxStyle}"
+                                TextChanged="TbScreenMonitorBaseUrl_TextChanged" />
+
+                            <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="{ll:Str 模型名称}" />
+                            <TextBox x:Name="TbScreenMonitorModelName" Grid.Row="4" Grid.Column="2" FontSize="16"
+                                Style="{DynamicResource StandardTextBoxStyle}"
+                                TextChanged="TbScreenMonitorModelName_TextChanged" />
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

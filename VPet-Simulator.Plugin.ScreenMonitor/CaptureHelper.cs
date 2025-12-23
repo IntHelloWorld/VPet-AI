@@ -91,6 +91,29 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         private static ID3D11Device? _d3dDevice;
         private static IDirect3DDevice? _winrtDevice;
 
+        private static void TryDisableWgcBorder(GraphicsCaptureSession session, StringBuilder? diag = null)
+        {
+            // On newer Windows builds, WGC exposes GraphicsCaptureSession.IsBorderRequired.
+            // Setting it to false can reduce or remove the yellow capture border.
+            // Use reflection to stay compatible with older SDK projections where the property may not exist.
+            try
+            {
+                var prop = session.GetType().GetProperty("IsBorderRequired");
+                if (prop != null && prop.CanWrite && prop.PropertyType == typeof(bool))
+                {
+                    prop.SetValue(session, false);
+                    diag?.AppendLine("IsBorderRequired: set to false");
+                    return;
+                }
+
+                diag?.AppendLine("IsBorderRequired: not available");
+            }
+            catch (Exception ex)
+            {
+                diag?.AppendLine($"IsBorderRequired: set failed ({ex.GetType().Name}: {ex.Message})");
+            }
+        }
+
         /// <summary>
         /// 捕获“当前前台窗口所在显示器”的整屏截图（WGC）。
         /// </summary>
@@ -421,6 +444,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 item.Size);
 
             using var session = framePool.CreateCaptureSession(item);
+            TryDisableWgcBorder(session);
             var completionSource = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             framePool.FrameArrived += async (s, a) =>

@@ -9,6 +9,10 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
 {
     public class ScreenMonitorPlugin : MainPlugin
     {
+        private const string SettingKeyApiKey = "API Key";
+        private const string SettingKeyBaseUrl = "Base Url";
+        private const string SettingKeyModelName = "Model Name";
+
         private static void DebugLog(string message) => DebugLogger.Log("[Plugin] " + message);
 
         private System.Timers.Timer _monitorTimer;
@@ -58,11 +62,50 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             intervalMs = Math.Clamp(intervalMs, 1_000, 3_600_000);
             _monitorTimer.Interval = intervalMs;
 
+            // API settings
+            string apiKey = MW.Set["screenmonitor"].GetString(SettingKeyApiKey, string.Empty) ?? string.Empty;
+            _visionClient.ApiKey = apiKey.Trim();
+
+            string baseUrl = MW.Set["screenmonitor"].GetString(SettingKeyBaseUrl, string.Empty) ?? string.Empty;
+            baseUrl = baseUrl.Trim();
+            if (!string.IsNullOrWhiteSpace(baseUrl))
+            {
+                _visionClient.ApiEndpoint = NormalizeToChatCompletionsEndpoint(baseUrl);
+            }
+
+            string modelName = MW.Set["screenmonitor"].GetString(SettingKeyModelName, string.Empty) ?? string.Empty;
+            modelName = modelName.Trim();
+            if (!string.IsNullOrWhiteSpace(modelName))
+            {
+                _visionClient.ModelName = modelName;
+            }
+
             // 可选：用户指定要截取的显示器（DeviceName，例如 \\.\DISPLAY1）
             var dev = MW.Set["screenmonitor"].GetString("monitor_device", null);
             _monitorDeviceName = string.IsNullOrWhiteSpace(dev) ? null : dev;
 
-            DebugLog($"ApplySettingsFromMW: intervalMs={_monitorTimer.Interval} monitor_device={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<null>" : _monitorDeviceName)}");
+            DebugLog($"ApplySettingsFromMW: intervalMs={_monitorTimer.Interval} monitor_device={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<null>" : _monitorDeviceName)} api_key={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<empty>" : "<set>")} api_endpoint={_visionClient.ApiEndpoint} model={_visionClient.ModelName}");
+        }
+
+        private static string NormalizeToChatCompletionsEndpoint(string baseUrlOrEndpoint)
+        {
+            string s = baseUrlOrEndpoint.Trim();
+            if (string.IsNullOrWhiteSpace(s))
+                return "https://api.openai.com/v1/chat/completions";
+
+            // Allow user to paste full endpoint.
+            if (s.Contains("/chat/completions", StringComparison.OrdinalIgnoreCase))
+                return s;
+
+            // BaseUrl could be:
+            // - https://api.openai.com
+            // - https://api.openai.com/v1
+            // - https://example.com/openai (OpenAI-compatible proxy)
+            s = s.TrimEnd('/');
+            if (s.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+                return s + "/chat/completions";
+
+            return s + "/v1/chat/completions";
         }
 
         private async void OnMonitorTimerElapsed(object? sender, ElapsedEventArgs e)

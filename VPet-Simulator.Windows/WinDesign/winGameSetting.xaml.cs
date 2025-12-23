@@ -24,6 +24,7 @@ using VPet_Simulator.Core;
 using VPet_Simulator.Windows.Interface;
 using static VPet_Simulator.Windows.Win32;
 using Item = Steamworks.Ugc.Item;
+using FormsScreen = System.Windows.Forms.Screen;
 
 namespace VPet_Simulator.Windows
 {
@@ -34,6 +35,10 @@ namespace VPet_Simulator.Windows
     {
         MainWindow mw;
         private bool AllowChange = false;
+
+        private const string ScreenMonitorSettingKeyApiKey = "API Key";
+        private const string ScreenMonitorSettingKeyBaseUrl = "Base Url";
+        private const string ScreenMonitorSettingKeyModelName = "Model Name";
         public winGameSetting(MainWindow mw)
         {
             this.mw = mw;
@@ -182,6 +187,8 @@ namespace VPet_Simulator.Windows
             SwitchOpacity.IsChecked = mw.Set.OpacityMain;
             OpacitySlider.Value = mw.Set.Opacity;
 
+            InitScreenMonitorSettingsUI();
+
 #if X64
             GameVerison.Content = "游戏版本".Translate() + $"v{mw.Version} x64";
 #else
@@ -259,6 +266,7 @@ namespace VPet_Simulator.Windows
             ListMenuItems.Add(listmenuswith("聊天设置", 1, RBCGPTUseLB));
             ListMenuItems.Add(listmenuswith("游戏操作", 1, btn_cleancache));
             ListMenuItems.Add(listmenuswith("桌宠多开", 1, btn_mutidel));
+            ListMenuItems.Add(listmenuswith("屏幕监控", 1, NumScreenMonitorIntervalSeconds));
 
             ListMenuItems.Add(listmenuswith("互动设置", 2, CalFunctionBox));
             ListMenuItems.Add(listmenuswith("计算间隔", 2, CalSlider));
@@ -285,6 +293,130 @@ namespace VPet_Simulator.Windows
 
             ToolTipService.SetInitialShowDelay(runMODGameVerInfo, 0);
 
+        }
+
+        private sealed class ScreenMonitorMonitorOption
+        {
+            public required string DeviceName { get; init; }
+            public required string Display { get; init; }
+            public override string ToString() => Display;
+        }
+
+        private void InitScreenMonitorSettingsUI()
+        {
+            try
+            {
+                // interval
+                int intervalMs = mw.Set["screenmonitor"].GetInt("interval_ms", 10_000);
+                intervalMs = Math.Clamp(intervalMs, 1_000, 3_600_000);
+                NumScreenMonitorIntervalSeconds.Value = Math.Max(1, intervalMs / 1000.0);
+
+                // monitors
+                CbScreenMonitorMonitor.Items.Clear();
+                var screens = FormsScreen.AllScreens;
+                for (int i = 0; i < screens.Length; i++)
+                {
+                    var s = screens[i];
+                    string primary = s.Primary ? " (主屏)" : string.Empty;
+                    string bounds = $"{s.Bounds.X},{s.Bounds.Y} {s.Bounds.Width}x{s.Bounds.Height}";
+                    CbScreenMonitorMonitor.Items.Add(new ScreenMonitorMonitorOption
+                    {
+                        DeviceName = s.DeviceName,
+                        Display = $"{i + 1}: {s.DeviceName}{primary}  [{bounds}]"
+                    });
+                }
+
+                string? saved = mw.Set["screenmonitor"].GetString("monitor_device", null);
+                var selected = CbScreenMonitorMonitor.Items.OfType<ScreenMonitorMonitorOption>()
+                    .FirstOrDefault(o => string.Equals(o.DeviceName, saved, StringComparison.OrdinalIgnoreCase));
+
+                if (selected == null)
+                    selected = CbScreenMonitorMonitor.Items.OfType<ScreenMonitorMonitorOption>()
+                                   .FirstOrDefault(o => FormsScreen.AllScreens.FirstOrDefault(sc => sc.DeviceName == o.DeviceName)?.Primary == true)
+                               ?? CbScreenMonitorMonitor.Items.OfType<ScreenMonitorMonitorOption>().FirstOrDefault();
+
+                if (selected != null)
+                    CbScreenMonitorMonitor.SelectedItem = selected;
+
+                // API settings
+                TbScreenMonitorApiKey.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyApiKey, string.Empty) ?? string.Empty;
+                TbScreenMonitorBaseUrl.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyBaseUrl, string.Empty) ?? string.Empty;
+                TbScreenMonitorModelName.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyModelName, string.Empty) ?? string.Empty;
+            }
+            catch
+            {
+                // keep settings UI usable even if enumeration/config fails
+            }
+        }
+
+        private void ApplyScreenMonitorSettingsToPlugin()
+        {
+            foreach (var mainplug in mw.Plugins)
+            {
+                try
+                {
+                    if (mainplug.PluginName == "ScreenMonitor")
+                    {
+                        mainplug.GetType().GetMethod("ApplySettingsFromMW")?.Invoke(mainplug, null);
+                        return;
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+        }
+
+        private void NumScreenMonitorIntervalSeconds_ValueChanged(object sender, Panuon.WPF.SelectedValueChangedRoutedEventArgs<double?> e)
+        {
+            if (!AllowChange)
+                return;
+
+            double seconds = NumScreenMonitorIntervalSeconds.Value ?? 0;
+            if (double.IsNaN(seconds) || double.IsInfinity(seconds))
+                return;
+
+            seconds = Math.Clamp(seconds, 1, 3600);
+            mw.Set["screenmonitor"].SetInt("interval_ms", (int)(seconds * 1000));
+            ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void CbScreenMonitorMonitor_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+
+            if (CbScreenMonitorMonitor.SelectedItem is ScreenMonitorMonitorOption opt)
+                mw.Set["screenmonitor"].SetString("monitor_device", opt.DeviceName);
+            else
+                mw.Set["screenmonitor"].SetString("monitor_device", string.Empty);
+
+            ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void TbScreenMonitorApiKey_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyApiKey, TbScreenMonitorApiKey.Text?.Trim() ?? string.Empty);
+            ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void TbScreenMonitorBaseUrl_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyBaseUrl, TbScreenMonitorBaseUrl.Text?.Trim() ?? string.Empty);
+            ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void TbScreenMonitorModelName_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyModelName, TbScreenMonitorModelName.Text?.Trim() ?? string.Empty);
+            ApplyScreenMonitorSettingsToPlugin();
         }
         public List<ListBoxItem> ListMenuItems = new List<ListBoxItem>();
         private void tb_seach_menu_textchange(object sender, TextChangedEventArgs e)
