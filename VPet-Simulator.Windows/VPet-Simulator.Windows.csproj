@@ -241,4 +241,21 @@
 	  <ProjectReference Include="..\VPet-Simulator.Core\VPet-Simulator.Core.csproj" />
 	  <ProjectReference Include="..\VPet-Simulator.Windows.Interface\VPet-Simulator.Windows.Interface.csproj" />
 	</ItemGroup>
+
+	<Target Name="CopyScreenMonitorPluginToMod" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+		<PropertyGroup>
+			<ScreenMonitorModSrc>$(MSBuildThisFileDirectory)mod\1300_ScreenMonitor\</ScreenMonitorModSrc>
+			<ScreenMonitorModOut>$(TargetDir)mod\1300_ScreenMonitor\</ScreenMonitorModOut>
+			<ScreenMonitorPluginOut>$(MSBuildThisFileDirectory)..\VPet-Simulator.Plugin.ScreenMonitor\bin\$(Configuration)\net8.0-windows10.0.19041.0\</ScreenMonitorPluginOut>
+		</PropertyGroup>
+
+		<MakeDir Directories="$(ScreenMonitorModOut)plugin\" />
+		<Copy SourceFiles="$(ScreenMonitorModSrc)info.lps" DestinationFolder="$(ScreenMonitorModOut)" SkipUnchangedFiles="true" Condition="Exists('$(ScreenMonitorModSrc)info.lps')" />
+
+		<ItemGroup>
+			<ScreenMonitorPluginFiles Include="$(ScreenMonitorPluginOut)*.dll" Condition="Exists('$(ScreenMonitorPluginOut)')" />
+			<ScreenMonitorPluginFiles Include="$(ScreenMonitorPluginOut)*.json" Condition="Exists('$(ScreenMonitorPluginOut)')" />
+		</ItemGroup>
+		<Copy SourceFiles="@(ScreenMonitorPluginFiles)" DestinationFolder="$(ScreenMonitorModOut)plugin\" SkipUnchangedFiles="true" />
+	</Target>
 </Project>

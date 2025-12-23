@@ -1,0 +1,33 @@
+<Window x:Class="VPet_Simulator.Plugin.ScreenMonitor.WinSettings"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Screen Monitor 设置" Height="220" Width="380"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0" Text="监控频率(秒):" />
+        <TextBox x:Name="TbIntervalSeconds" Grid.Row="0" Grid.Column="1" MinWidth="120" />
+
+        <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,8,8,0" Text="截取显示器:" />
+        <ComboBox x:Name="CbMonitor" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" MinWidth="240" />
+
+        <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Margin="0,8,0,0" Foreground="Gray"
+                   Text="建议 5-30 秒；太小会增加API调用次数与性能消耗。" />
+
+        <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="BtnTestCapture" Width="90" Margin="0,0,8,0" Click="BtnTestCapture_Click" Content="测试截屏" />
+            <Button Width="80" Margin="0,0,8,0" Click="BtnCancel_Click" Content="取消" />
+            <Button Width="80" Click="BtnSave_Click" Content="保存" />
+        </StackPanel>
+    </Grid>
+</Window>

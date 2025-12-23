@@ -1252,6 +1252,28 @@ namespace VPet_Simulator.Windows
             }
         }
 
+        private void BtnScreenMonitorSetting_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var mainplug in mw.Plugins)
+            {
+                try
+                {
+                    if (mainplug.PluginName == "ScreenMonitor"
+                        && mainplug.GetType().GetMethod("Setting")?.DeclaringType != typeof(MainPlugin))
+                    {
+                        mainplug.Setting();
+                        return;
+                    }
+                }
+                catch
+                {
+                    // ignore and continue searching
+                }
+            }
+
+            MessageBox.Show("未找到屏幕监控插件或插件未加载".Translate(), "提示".Translate());
+        }
+
         private void StartPlace_Checked(object sender, RoutedEventArgs e)
         {
             if (!AllowChange)

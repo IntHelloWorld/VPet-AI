@@ -53,7 +53,12 @@ namespace VPet_Simulator.Core
             int length = info.GetInt("length");
             if (length == 0)
             {
-                if (!int.TryParse(path.Name.Split('.').Reverse().ToArray()[1].Split('_').Last(), out length))
+                // if (!int.TryParse(path.Name.Split('.').Reverse().ToArray()[1].Split('_').Last(), out length))
+                //     length = 1000;
+                string fileNameWithoutExt = System.IO.Path.GetFileNameWithoutExtension(path.Name);
+                string lastPart = fileNameWithoutExt.Split('_').LastOrDefault();
+
+                if (string.IsNullOrEmpty(lastPart) || !int.TryParse(lastPart, out length))
                     length = 1000;
             }
             bool isLoop = info[(gbol)"loop"];
