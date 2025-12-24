@@ -527,6 +527,7 @@
                             <RowDefinition Height="35" />
                             <RowDefinition Height="35" />
                             <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="{ll:Str 监控频率(秒)}" />
@@ -553,6 +554,13 @@
                             <TextBox x:Name="TbScreenMonitorModelName" Grid.Row="4" Grid.Column="2" FontSize="16"
                                 Style="{DynamicResource StandardTextBoxStyle}"
                                 TextChanged="TbScreenMonitorModelName_TextChanged" />
+
+                            <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="{ll:Str 调试日志}" />
+                            <Button x:Name="BtnScreenMonitorOpenDebugLog" Grid.Row="5" Grid.Column="2" Height="30"
+                                HorizontalAlignment="Left" pu:ButtonHelper.CornerRadius="4"
+                                Background="{DynamicResource SecondaryLight}"
+                                BorderBrush="{DynamicResource SecondaryDark}" BorderThickness="2"
+                                Click="BtnScreenMonitorOpenDebugLog_Click" Content="{ll:Str 打开调试日志}" />
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>

@@ -91,29 +91,6 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         private static ID3D11Device? _d3dDevice;
         private static IDirect3DDevice? _winrtDevice;
 
-        private static void TryDisableWgcBorder(GraphicsCaptureSession session, StringBuilder? diag = null)
-        {
-            // On newer Windows builds, WGC exposes GraphicsCaptureSession.IsBorderRequired.
-            // Setting it to false can reduce or remove the yellow capture border.
-            // Use reflection to stay compatible with older SDK projections where the property may not exist.
-            try
-            {
-                var prop = session.GetType().GetProperty("IsBorderRequired");
-                if (prop != null && prop.CanWrite && prop.PropertyType == typeof(bool))
-                {
-                    prop.SetValue(session, false);
-                    diag?.AppendLine("IsBorderRequired: set to false");
-                    return;
-                }
-
-                diag?.AppendLine("IsBorderRequired: not available");
-            }
-            catch (Exception ex)
-            {
-                diag?.AppendLine($"IsBorderRequired: set failed ({ex.GetType().Name}: {ex.Message})");
-            }
-        }
-
         /// <summary>
         /// 捕获“当前前台窗口所在显示器”的整屏截图（WGC）。
         /// </summary>
@@ -129,18 +106,18 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             IntPtr hwnd = GetForegroundWindow();
             if (hwnd == IntPtr.Zero) return null;
 
-            DebugLog($"CaptureActiveWindowAsync: 前台窗口句柄 hwnd=0x{hwnd.ToInt64():X}");
+            DebugLog($"截取前台窗口所在屏幕：窗口句柄=0x{hwnd.ToInt64():X}");
 
             // 更稳妥：捕获“前台窗口所在的显示器”（等价于整屏/整显示器），避免某些窗口无法被捕获导致拿不到帧。
             var hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
             if (hmon == IntPtr.Zero) return null;
 
-            DebugLog($"CaptureActiveWindowAsync: 前台窗口所在显示器 hmon=0x{hmon.ToInt64():X}");
+            DebugLog($"截取前台窗口所在屏幕：显示器句柄=0x{hmon.ToInt64():X}");
 
             var item = CreateItemForMonitor(hmon);
             if (item == null) return null;
 
-            DebugLog("CaptureActiveWindowAsync: WGC CreateItemForMonitor 成功。");
+            DebugLog("截取前台窗口所在屏幕：创建捕获项成功。");
 
             return await CaptureItemAsync(item, timeoutMs: DefaultTimeoutMs);
         }
@@ -150,7 +127,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         /// </summary>
         public static async Task<byte[]?> CaptureActiveWindowAsync(string? monitorDeviceName, int timeoutMs = 1500)
         {
-            DebugLog($"CaptureActiveWindowAsync(带选择): monitorDeviceName={(string.IsNullOrWhiteSpace(monitorDeviceName) ? "<未设置>" : monitorDeviceName)} timeoutMs={timeoutMs}");
+            DebugLog($"截取前台窗口所在屏幕（带选择）：显示器={(string.IsNullOrWhiteSpace(monitorDeviceName) ? "<未设置>" : monitorDeviceName)} 超时毫秒={timeoutMs}");
             if (!string.IsNullOrWhiteSpace(monitorDeviceName))
             {
                 var bytes = await CaptureSelectedMonitorAsync(monitorDeviceName, timeoutMs);
@@ -172,7 +149,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             if (string.IsNullOrWhiteSpace(monitorDeviceName))
                 return null;
 
-            DebugLog($"CaptureSelectedMonitorAsync: 目标显示器={monitorDeviceName} timeoutMs={timeoutMs}");
+            DebugLog($"截取指定显示器：目标显示器={monitorDeviceName} 超时毫秒={timeoutMs}");
 
             if (!GraphicsCaptureSession.IsSupported())
                 throw new NotSupportedException("当前系统不支持 Windows Graphics Capture（WGC）。");
@@ -180,27 +157,27 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             var screen = FormsScreen.AllScreens.FirstOrDefault(s => string.Equals(s.DeviceName, monitorDeviceName, StringComparison.OrdinalIgnoreCase));
             if (screen == null)
             {
-                DebugLog("CaptureSelectedMonitorAsync: 未找到对应显示器（Screen.AllScreens 中不存在）。");
+                DebugLog("截取指定显示器：未找到对应显示器（系统屏幕列表中不存在）。");
                 return null;
             }
 
             var hmon = GetHMonitorForScreen(screen);
             if (hmon == IntPtr.Zero)
             {
-                DebugLog("CaptureSelectedMonitorAsync: MonitorFromPoint 返回 NULL（无法解析 HMONITOR）。");
+                DebugLog("截取指定显示器：获取显示器句柄失败（返回空）。");
                 return null;
             }
 
-            DebugLog($"CaptureSelectedMonitorAsync: bounds={screen.Bounds.Left},{screen.Bounds.Top} {screen.Bounds.Width}x{screen.Bounds.Height} hmon=0x{hmon.ToInt64():X}");
+            DebugLog($"截取指定显示器：范围={screen.Bounds.Left},{screen.Bounds.Top} {screen.Bounds.Width}x{screen.Bounds.Height} 显示器句柄=0x{hmon.ToInt64():X}");
 
             var item = CreateItemForMonitor(hmon);
             if (item == null)
             {
-                DebugLog("CaptureSelectedMonitorAsync: WGC CreateItemForMonitor 返回 null（上层可选择回退）。");
+                DebugLog("截取指定显示器：创建捕获项失败（返回空，可回退）。");
                 return null;
             }
 
-            DebugLog("CaptureSelectedMonitorAsync: 使用 WGC CreateItemForMonitor 成功。");
+            DebugLog("截取指定显示器：创建捕获项成功。");
 
             return await CaptureItemAsync(item, timeoutMs);
         }
@@ -246,12 +223,12 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         /// </remarks>
         public static async Task<(byte[]? Bytes, string Diagnostics)> CaptureMonitorWithDiagnosticsAsync(string? monitorDeviceName, int timeoutMs = 1500)
         {
-            DebugLog($"CaptureMonitorWithDiagnosticsAsync: monitorDeviceName={(string.IsNullOrWhiteSpace(monitorDeviceName) ? "<未设置>" : monitorDeviceName)} timeoutMs={timeoutMs}");
+            DebugLog($"带诊断截屏：显示器={(string.IsNullOrWhiteSpace(monitorDeviceName) ? "<未设置>" : monitorDeviceName)} 超时毫秒={timeoutMs}");
             IntPtr hwnd = GetForegroundWindow();
             if (hwnd == IntPtr.Zero)
                 return (null, "GetForegroundWindow 返回 NULL。");
 
-            DebugLog($"CaptureMonitorWithDiagnosticsAsync: hwnd=0x{hwnd.ToInt64():X}");
+            DebugLog($"带诊断截屏：窗口句柄=0x{hwnd.ToInt64():X}");
 
             var diag = new StringBuilder();
 
@@ -262,7 +239,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 diag.AppendLine($"RequestedMonitorDevice: {monitorDeviceName}");
                 diag.AppendLine($"ResolvedScreen: {(selectedScreen == null ? "NULL" : selectedScreen.DeviceName)}");
 
-                DebugLog($"CaptureMonitorWithDiagnosticsAsync: selectedScreen={(selectedScreen == null ? "NULL" : selectedScreen.DeviceName)}");
+                DebugLog($"带诊断截屏：已选显示器={(selectedScreen == null ? "<空>" : selectedScreen.DeviceName)}");
             }
 
             IntPtr hmon;
@@ -271,14 +248,14 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 hmon = GetHMonitorForScreen(selectedScreen);
                 diag.AppendLine($"MonitorFromPoint(HMONITOR): 0x{hmon.ToInt64():X}");
 
-                DebugLog($"CaptureMonitorWithDiagnosticsAsync: MonitorFromPoint hmon=0x{hmon.ToInt64():X} bounds={selectedScreen.Bounds.Left},{selectedScreen.Bounds.Top} {selectedScreen.Bounds.Width}x{selectedScreen.Bounds.Height}");
+                DebugLog($"带诊断截屏：点位解析显示器句柄=0x{hmon.ToInt64():X} 范围={selectedScreen.Bounds.Left},{selectedScreen.Bounds.Top} {selectedScreen.Bounds.Width}x{selectedScreen.Bounds.Height}");
             }
             else
             {
                 hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
                 diag.AppendLine($"MonitorFromWindow(HMONITOR): 0x{hmon.ToInt64():X}");
 
-                DebugLog($"CaptureMonitorWithDiagnosticsAsync: MonitorFromWindow hmon=0x{hmon.ToInt64():X}");
+                DebugLog($"带诊断截屏：窗口解析显示器句柄=0x{hmon.ToInt64():X}");
             }
 
             if (hmon == IntPtr.Zero)
@@ -290,12 +267,12 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 var (item, itemDiag) = TryCreateItemForMonitorWithDiagnostics(hmon);
                 if (item == null)
                 {
-                    DebugLog("CaptureMonitorWithDiagnosticsAsync: WGC(显示器) 返回 NULL，尝试 WGC(窗口)；仍失败则回退 GDI。");
+                    DebugLog("带诊断截屏：显示器捕获返回空，尝试窗口捕获；仍失败则回退传统截屏。");
                     // Fallback: try window-based item (some environments fail monitor capture)
                     var (winItem, winDiag) = TryCreateItemForWindowWithDiagnostics(hwnd);
                     if (winItem != null)
                     {
-                        DebugLog("CaptureMonitorWithDiagnosticsAsync: 使用 WGC 窗口捕获。");
+                        DebugLog("带诊断截屏：使用窗口捕获。");
                         var (bytes, capDiag) = await CaptureItemWithDiagnosticsAsync(winItem, timeoutMs);
                         return (bytes, diag + "\n" + itemDiag + "\n" + winDiag + "\n" + capDiag);
                     }
@@ -304,19 +281,19 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                     byte[] gdiBytes;
                     if (selectedScreen != null)
                     {
-                        DebugLog("CaptureMonitorWithDiagnosticsAsync: 回退到 GDI（仅截取所选显示器）。");
+                        DebugLog("带诊断截屏：回退到传统截屏（仅截取所选显示器）。");
                         gdiBytes = CaptureScreenBoundsGdiJpeg(selectedScreen.Bounds, JpegTargetWidth);
                         return (gdiBytes, diag + "\n" + itemDiag + "\n" + winDiag + "\n" + "回退：已使用 GDI 截取所选显示器。" );
                     }
                     else
                     {
-                        DebugLog("CaptureMonitorWithDiagnosticsAsync: 回退到 GDI（截取虚拟桌面）。");
+                        DebugLog("带诊断截屏：回退到传统截屏（截取虚拟桌面）。");
                         gdiBytes = CaptureVirtualScreenGdiJpeg(JpegTargetWidth);
                         return (gdiBytes, diag + "\n" + itemDiag + "\n" + winDiag + "\n" + "回退：已使用 GDI 截取虚拟桌面。" );
                     }
                 }
 
-                DebugLog("CaptureMonitorWithDiagnosticsAsync: 使用 WGC 显示器捕获。");
+                DebugLog("带诊断截屏：使用显示器捕获。");
                 var (bytes2, capDiag2) = await CaptureItemWithDiagnosticsAsync(item, timeoutMs);
                 return (bytes2, diag + "\n" + itemDiag + "\n" + capDiag2);
             }
@@ -327,13 +304,13 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 {
                     if (selectedScreen != null)
                     {
-                        DebugLog("CaptureMonitorWithDiagnosticsAsync: Falling back to GDI selected-screen capture (exception path).");
+                        DebugLog("带诊断截屏：异常路径，回退到传统截屏（仅截取所选显示器）。");
                         var gdiBytes = CaptureScreenBoundsGdiJpeg(selectedScreen.Bounds, JpegTargetWidth);
                         return (gdiBytes, diag + "\nWGC 异常：" + ex + "\n回退：已使用 GDI 截取所选显示器。");
                     }
                     else
                     {
-                        DebugLog("CaptureMonitorWithDiagnosticsAsync: Falling back to GDI virtual-screen capture (exception path).");
+                        DebugLog("带诊断截屏：异常路径，回退到传统截屏（截取虚拟桌面）。");
                         var gdiBytes = CaptureVirtualScreenGdiJpeg(JpegTargetWidth);
                         return (gdiBytes, diag + "\nWGC 异常：" + ex + "\n回退：已使用 GDI 截取虚拟桌面。");
                     }
@@ -444,7 +421,6 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 item.Size);
 
             using var session = framePool.CreateCaptureSession(item);
-            TryDisableWgcBorder(session);
             var completionSource = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             framePool.FrameArrived += async (s, a) =>
@@ -486,7 +462,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             var diag = new StringBuilder();
             diag.AppendLine($"IsSupported: {GraphicsCaptureSession.IsSupported()}");
 
-            DebugLog($"CaptureItemWithDiagnosticsAsync: start timeoutMs={timeoutMs}");
+            DebugLog($"捕获帧（带诊断）：开始 超时毫秒={timeoutMs}");
 
             try
             {
@@ -569,7 +545,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                     if (firstFrameInfo == null)
                         firstFrameInfo = $"FirstFrame at {sw.ElapsedMilliseconds}ms; ContentSize={frame.ContentSize.Width}x{frame.ContentSize.Height}";
 
-                    DebugLog($"CaptureItemWithDiagnosticsAsync: FrameArrived #{frameArrivedCount}; {firstFrameInfo}");
+                    DebugLog($"捕获帧（带诊断）：收到帧 #{frameArrivedCount}; {firstFrameInfo}");
 
                     var bitmap = await SoftwareBitmap.CreateCopyFromSurfaceAsync(frame.Surface);
                     var encodedData = await EncodeBitmapAsync(bitmap);
@@ -601,7 +577,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 try { session.Dispose(); } catch { }
                 diag.AppendLine("Result: TIMEOUT (no completed frame)");
 
-                DebugLog($"CaptureItemWithDiagnosticsAsync: TIMEOUT after {timeoutMs}ms; FrameArrivedCount={frameArrivedCount}");
+                DebugLog($"捕获帧（带诊断）：超时 超时毫秒={timeoutMs} 收到帧数={frameArrivedCount}");
                 return (null, diag.ToString());
             }
 
@@ -610,7 +586,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 var bytes = await tcs.Task;
                 diag.AppendLine($"Result: OK (bytes={bytes?.Length ?? 0})");
 
-                DebugLog($"CaptureItemWithDiagnosticsAsync: OK bytes={bytes?.Length ?? 0}");
+                DebugLog($"捕获帧（带诊断）：成功 字节数={bytes?.Length ?? 0}");
                 return (bytes, diag.ToString());
             }
             catch (Exception ex)
@@ -620,7 +596,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 if (capturedException != null && !ReferenceEquals(ex, capturedException))
                     diag.AppendLine("CapturedException: " + capturedException);
 
-                DebugLog($"CaptureItemWithDiagnosticsAsync: EXCEPTION {ex.GetType().Name}: {ex.Message}");
+                DebugLog($"捕获帧（带诊断）：异常 {ex.GetType().Name}: {ex.Message}");
                 return (null, diag.ToString());
             }
         }
@@ -719,7 +695,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 diag.AppendLine($"HRESULT: 0x{hr:X8}");
                 diag.AppendLine($"ResultPtr: 0x{temp.ToInt64():X}");
 
-                DebugLog($"WGC CreateForMonitor: hr=0x{hr:X8} ptr=0x{temp.ToInt64():X} iid={iid}");
+                DebugLog($"创建显示器捕获项：hr=0x{hr:X8} 指针=0x{temp.ToInt64():X} 接口={iid}");
                 if (hr != 0)
                     Marshal.ThrowExceptionForHR(hr);
                 if (temp == IntPtr.Zero)
@@ -757,7 +733,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 diag.AppendLine($"HRESULT: 0x{hr:X8}");
                 diag.AppendLine($"ResultPtr: 0x{temp.ToInt64():X}");
 
-                DebugLog($"WGC CreateForWindow: hr=0x{hr:X8} ptr=0x{temp.ToInt64():X} iid={iid} hwnd=0x{hwnd.ToInt64():X}");
+                DebugLog($"创建窗口捕获项：hr=0x{hr:X8} 指针=0x{temp.ToInt64():X} 接口={iid} 窗口句柄=0x{hwnd.ToInt64():X}");
                 if (hr != 0)
                     Marshal.ThrowExceptionForHR(hr);
                 if (temp == IntPtr.Zero)

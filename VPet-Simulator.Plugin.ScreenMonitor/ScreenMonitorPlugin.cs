@@ -13,7 +13,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         private const string SettingKeyBaseUrl = "Base Url";
         private const string SettingKeyModelName = "Model Name";
 
-        private static void DebugLog(string message) => DebugLogger.Log("[Plugin] " + message);
+        private static void DebugLog(string message) => DebugLogger.Log("[插件] " + message);
 
         private System.Timers.Timer _monitorTimer;
         private string _lastWindowTitle = string.Empty;
@@ -43,11 +43,9 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         {
             try
             {
-                // 由设置窗口调用 ApplySettingsFromMW() 让新频率立即生效
-                var win = new WinSettings(MW, this);
-                if (System.Windows.Application.Current != null && System.Windows.Application.Current.MainWindow != null)
-                    win.Owner = System.Windows.Application.Current.MainWindow;
-                win.ShowDialog();
+                System.Windows.MessageBox.Show(
+                    "屏幕监控的设置已整合到主设置界面。\n\n请打开：设置 → 图形 → 屏幕监控\n\n（如需排障：可在主设置里点击“打开调试日志”）",
+                    "屏幕监控设置");
             }
             catch (Exception ex)
             {
@@ -70,7 +68,9 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             baseUrl = baseUrl.Trim();
             if (!string.IsNullOrWhiteSpace(baseUrl))
             {
-                _visionClient.ApiEndpoint = NormalizeToChatCompletionsEndpoint(baseUrl);
+                // 保持用户设置的 ApiEndpoint 原样。
+                // VisionAPIClient 会基于 ApiEndpoint + ModelName 自动规范化/拼接最终 URL（例如 Gemini generateContent）。
+                _visionClient.ApiEndpoint = baseUrl;
             }
 
             string modelName = MW.Set["screenmonitor"].GetString(SettingKeyModelName, string.Empty) ?? string.Empty;
@@ -84,7 +84,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             var dev = MW.Set["screenmonitor"].GetString("monitor_device", null);
             _monitorDeviceName = string.IsNullOrWhiteSpace(dev) ? null : dev;
 
-            DebugLog($"ApplySettingsFromMW: intervalMs={_monitorTimer.Interval} monitor_device={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<null>" : _monitorDeviceName)} api_key={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<empty>" : "<set>")} api_endpoint={_visionClient.ApiEndpoint} model={_visionClient.ModelName}");
+            DebugLog($"应用设置：间隔毫秒={_monitorTimer.Interval} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)} 密钥={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<空>" : "<已设置>")} 接口={_visionClient.ApiEndpoint} 模型={_visionClient.ModelName}");
         }
 
         private static string NormalizeToChatCompletionsEndpoint(string baseUrlOrEndpoint)
@@ -93,14 +93,14 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             if (string.IsNullOrWhiteSpace(s))
                 return "https://api.openai.com/v1/chat/completions";
 
-            // Allow user to paste full endpoint.
+            // 允许用户直接粘贴完整的 endpoint。
             if (s.Contains("/chat/completions", StringComparison.OrdinalIgnoreCase))
                 return s;
 
-            // BaseUrl could be:
+            // BaseUrl 可能是：
             // - https://api.openai.com
             // - https://api.openai.com/v1
-            // - https://example.com/openai (OpenAI-compatible proxy)
+            // - https://example.com/openai（OpenAI 兼容代理）
             s = s.TrimEnd('/');
             if (s.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
                 return s + "/chat/completions";
@@ -121,19 +121,19 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             if (activeWindowTitle != _lastWindowTitle && !string.IsNullOrEmpty(activeWindowTitle) && activeWindowTitle != "Unknown")
             {
                 _lastWindowTitle = activeWindowTitle;
-                DebugLog($"OnMonitorTimerElapsed: window changed -> '{activeWindowTitle}', monitor_device={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<null>" : _monitorDeviceName)}");
+                DebugLog($"定时检测：窗口切换 -> '{activeWindowTitle}' 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)}");
                 
                 try
                 {
                     byte[]? imageBytes = await CaptureHelper.CaptureActiveWindowAsync(_monitorDeviceName);
                     if (imageBytes == null || imageBytes.Length == 0)
                     {
-                        DebugLogger.Log("Capture returned null/empty bytes; skipping this tick.");
+                        DebugLogger.Log("截屏结果为空（无图像数据），跳过本次检测。");
                         return;
                     }
                     if (imageBytes != null)
                     {
-                        DebugLog($"OnMonitorTimerElapsed: capture bytes={imageBytes.Length}");
+                        DebugLog($"定时检测：截屏字节数={imageBytes.Length}");
                         string base64Image = Convert.ToBase64String(imageBytes);
                         
                         // 调用 AI 进行分析
@@ -148,7 +148,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 }
                 catch (Exception ex)
                 {
-                    DebugLog("OnMonitorTimerElapsed: exception " + ex.GetType().Name + ": " + ex.Message);
+                    DebugLog("定时检测：异常 " + ex.GetType().Name + ": " + ex.Message);
                     Console.WriteLine($"Screen Monitor Error: {ex.Message}");
                 }
             }

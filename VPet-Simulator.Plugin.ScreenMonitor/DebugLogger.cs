@@ -26,7 +26,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             try
             {
                 string line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}";
-                Debug.WriteLine("[ScreenMonitor] " + line);
+                Debug.WriteLine("[屏幕监控] " + line);
 
                 lock (_lock)
                 {

@@ -418,6 +418,46 @@ namespace VPet_Simulator.Windows
             mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyModelName, TbScreenMonitorModelName.Text?.Trim() ?? string.Empty);
             ApplyScreenMonitorSettingsToPlugin();
         }
+
+        private void BtnScreenMonitorOpenDebugLog_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 与插件侧 DebugLogger.LogFilePath 保持一致：%TEMP%\vpet_screenmonitor_debug.log
+                string logPath = Path.Combine(Path.GetTempPath(), "vpet_screenmonitor_debug.log");
+                string? dir = Path.GetDirectoryName(logPath);
+                if (string.IsNullOrWhiteSpace(dir))
+                {
+                    MessageBox.Show($"无法解析日志目录：\n{logPath}", "屏幕监控调试日志");
+                    return;
+                }
+
+                if (File.Exists(logPath))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"/select,\"{logPath}\"",
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"\"{dir}\"",
+                        UseShellExecute = true
+                    });
+
+                    MessageBox.Show($"日志文件尚未生成（可能尚未触发调试输出，或当前为非调试版本）。\n\n日志路径：\n{logPath}", "屏幕监控调试日志");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开调试日志失败：\n{ex.Message}", "屏幕监控调试日志");
+            }
+        }
         public List<ListBoxItem> ListMenuItems = new List<ListBoxItem>();
         private void tb_seach_menu_textchange(object sender, TextChangedEventArgs e)
         {
