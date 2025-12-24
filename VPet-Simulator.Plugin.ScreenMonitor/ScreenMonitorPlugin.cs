@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Timers;
 using System.Windows;
+using VPet_Simulator.Core;
 using VPet_Simulator.Windows.Interface;
 
 namespace VPet_Simulator.Plugin.ScreenMonitor
@@ -136,14 +137,14 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                         DebugLog($"定时检测：截屏字节数={imageBytes.Length}");
                         string base64Image = Convert.ToBase64String(imageBytes);
                         
-                        // 调用 AI 进行分析
-                        var comment = await _visionClient.AnalyzeImageAsync(base64Image, activeWindowTitle);
-                        
-                        // 让桌宠说话
+                        // 调用 AI 进行分析 (流式)
+                        var sayInfo = new SayInfoWithStream();
                         MW.Main.Dispatcher.Invoke(() =>
                         {
-                            MW.Main.Say(comment);
+                            MW.Main.SayRnd(sayInfo);
                         });
+
+                        await _visionClient.AnalyzeImageStreamAsync(base64Image, activeWindowTitle, sayInfo);
                     }
                 }
                 catch (Exception ex)

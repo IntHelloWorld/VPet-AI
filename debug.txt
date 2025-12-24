@@ -1,1 +1,4 @@
 dotnet run --project "d:\repository\VPet-AI\VPet-Simulator.Windows\VPet-Simulator.Windows.csproj" -c Debug -p:Platform=x64
+
+dotnet build "d:\repository\VPet-AI\VPet.sln" -c Debug -p:Platform=x64
+

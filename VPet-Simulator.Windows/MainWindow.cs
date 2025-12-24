@@ -1463,6 +1463,14 @@ namespace VPet_Simulator.Windows
                 Set.Resolution = basemw.Set.Resolution;
             }
 
+            // ScreenMonitor：首次启动默认启用（写入 onmod），之后尊重用户手动禁用
+            // 说明：CoreMOD.IsOnMOD 会读取 Set 的 onmod；必须在扫描/加载 MOD 之前执行。
+            if (!Set["screenmonitor"].GetBool("default_mod_enabled_initialized"))
+            {
+                Set.OnMod("ScreenMonitor");
+                Set["screenmonitor"].SetBool("default_mod_enabled_initialized", true);
+            }
+
 
             //加载所有MOD
             List<DirectoryInfo> Path = new List<DirectoryInfo>();
