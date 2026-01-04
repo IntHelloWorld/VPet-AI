@@ -21,6 +21,8 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         private VisionAPIClient _visionClient;
         private volatile bool _isProcessing;
         private string? _monitorDeviceName;
+        private volatile bool _isPaused;
+        private System.Windows.Controls.MenuItem? _toggleMenuItem;
 
         public override string PluginName => "ScreenMonitor";
 
@@ -38,6 +40,56 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         {
             ApplySettingsFromMW();
             _monitorTimer.Start();
+        }
+
+        public override void LoadDIY()
+        {
+            // 在右键菜单中添加暂停/恢复监控选项（只添加一次）
+            if (_toggleMenuItem == null)
+            {
+                var menuText = _isPaused ? "恢复屏幕监控" : "暂停屏幕监控";
+                MW.Main.ToolBar.AddMenuButton(VPet_Simulator.Core.ToolBar.MenuType.Setting,
+                    menuText,
+                    ToggleMonitoring);
+
+                // 查找刚添加的菜单项并保存引用
+                foreach (var item in MW.Main.ToolBar.MenuSetting.Items)
+                {
+                    if (item is System.Windows.Controls.MenuItem menuItem &&
+                        (menuItem.Header.ToString() == "暂停屏幕监控" || menuItem.Header.ToString() == "恢复屏幕监控"))
+                    {
+                        _toggleMenuItem = menuItem;
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 切换监控状态（暂停/恢复）
+        /// </summary>
+        private void ToggleMonitoring()
+        {
+            _isPaused = !_isPaused;
+
+            MW.Main.ToolBar.Visibility = System.Windows.Visibility.Collapsed;
+
+            if (_isPaused)
+            {
+                DebugLog("用户手动暂停屏幕监控");
+                MW.Main.Say("屏幕监控已暂停，我不会再偷看你的屏幕啦~");
+            }
+            else
+            {
+                DebugLog("用户手动恢复屏幕监控");
+                MW.Main.Say("屏幕监控已恢复，让我看看你在做什么~");
+            }
+
+            // 更新菜单项文本
+            if (_toggleMenuItem != null)
+            {
+                _toggleMenuItem.Header = _isPaused ? "恢复屏幕监控" : "暂停屏幕监控";
+            }
         }
 
         public override void Setting()
@@ -85,33 +137,15 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             var dev = MW.Set["screenmonitor"].GetString("monitor_device", null);
             _monitorDeviceName = string.IsNullOrWhiteSpace(dev) ? null : dev;
 
-            DebugLog($"应用设置：间隔毫秒={_monitorTimer.Interval} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)} 密钥={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<空>" : "<已设置>")} 接口={_visionClient.ApiEndpoint} 模型={_visionClient.ModelName}");
-        }
+            // 读取暂停状态（GetBool 找不到时默认返回 false）
+            _isPaused = MW.Set["screenmonitor"].GetBool("is_paused");
 
-        private static string NormalizeToChatCompletionsEndpoint(string baseUrlOrEndpoint)
-        {
-            string s = baseUrlOrEndpoint.Trim();
-            if (string.IsNullOrWhiteSpace(s))
-                return "https://api.openai.com/v1/chat/completions";
-
-            // 允许用户直接粘贴完整的 endpoint。
-            if (s.Contains("/chat/completions", StringComparison.OrdinalIgnoreCase))
-                return s;
-
-            // BaseUrl 可能是：
-            // - https://api.openai.com
-            // - https://api.openai.com/v1
-            // - https://example.com/openai（OpenAI 兼容代理）
-            s = s.TrimEnd('/');
-            if (s.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
-                return s + "/chat/completions";
-
-            return s + "/v1/chat/completions";
+            DebugLog($"应用设置：间隔毫秒={_monitorTimer.Interval} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)} 密钥={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<空>" : "<已设置>")} 接口={_visionClient.ApiEndpoint} 模型={_visionClient.ModelName} 暂停状态={_isPaused}");
         }
 
         private async void OnMonitorTimerElapsed(object? sender, ElapsedEventArgs e)
         {
-            if (_isProcessing)
+            if (_isProcessing || _isPaused)
             {
                 _monitorTimer.Start();
                 return;
@@ -162,6 +196,12 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         {
             _monitorTimer.Stop();
             _monitorTimer.Dispose();
+        }
+
+        public override void Save()
+        {
+            // 保存暂停状态
+            MW.Set["screenmonitor"].SetBool("is_paused", _isPaused);
         }
     }
 
