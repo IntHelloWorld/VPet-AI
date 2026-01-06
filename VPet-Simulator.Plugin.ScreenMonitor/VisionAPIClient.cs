@@ -15,6 +15,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         public string ApiKey { get; set; } = string.Empty;
         public string ApiEndpoint { get; set; } = string.Empty;
         public string ModelName { get; set; } = string.Empty;
+        public string SystemPrompt { get; set; } = "你是一个可爱的桌宠,正在观察用户的屏幕。请根据用户当前的活动窗口和屏幕截图,给出一段简短、有趣且符合桌宠身份的吐槽或鼓励。使用中文回复,字数控制在30字以内。";
 
         private static void DebugLog(string message) => DebugLogger.Log("[识图] " + message);
 
@@ -32,7 +33,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             if (string.IsNullOrEmpty(ApiKey))
             {
                 DebugLog("分析图片(流式)：密钥为空");
-                sayInfo.UpdateText("API Key is not set.");
+                sayInfo.UpdateText("API 未设置密钥。");
                 sayInfo.FinishGenerate();
                 return;
             }
@@ -40,7 +41,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             if (string.IsNullOrWhiteSpace(ApiEndpoint))
             {
                 DebugLog("分析图片(流式)：接口地址为空");
-                sayInfo.UpdateText("API Endpoint is not set.");
+                sayInfo.UpdateText("API Endpoint 未设置。");
                 sayInfo.FinishGenerate();
                 return;
             }
@@ -48,7 +49,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             if (string.IsNullOrWhiteSpace(ModelName))
             {
                 DebugLog("分析图片(流式)：模型名为空");
-                sayInfo.UpdateText("Model Name is not set.");
+                sayInfo.UpdateText("模型名称未设置。");
                 sayInfo.FinishGenerate();
                 return;
             }
@@ -56,7 +57,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             if (string.IsNullOrWhiteSpace(base64Image))
             {
                 DebugLog("分析图片(流式)：图片编码数据为空");
-                sayInfo.UpdateText("Image data is empty.");
+                sayInfo.UpdateText("未能获取到图片数据。");
                 sayInfo.FinishGenerate();
                 return;
             }
@@ -83,7 +84,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                             },
                             new
                             {
-                                text = $"你是一个可爱的桌宠，正在观察用户的屏幕。请根据用户当前的活动窗口和屏幕截图，给出一段简短、有趣且符合桌宠身份的吐槽或鼓励。使用中文回复，字数控制在30字以内。"
+                                text = SystemPrompt
                             }
                         }
                     }

@@ -13,6 +13,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         private const string SettingKeyApiKey = "API Key";
         private const string SettingKeyBaseUrl = "Base Url";
         private const string SettingKeyModelName = "Model Name";
+        private const string SettingKeySystemPrompt = "System Prompt";
 
         private static void DebugLog(string message) => DebugLogger.Log("[插件] " + message);
 
@@ -133,6 +134,15 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                 _visionClient.ModelName = modelName;
             }
 
+            // 读取系统提示词
+            string defaultPrompt = "你是一个可爱的桌宠,正在观察用户的屏幕。请根据用户当前的活动窗口和屏幕截图,给出一段简短、有趣且符合桌宠身份的吐槽或鼓励。使用中文回复,字数控制在30字以内。";
+            string systemPrompt = MW.Set["screenmonitor"].GetString(SettingKeySystemPrompt, defaultPrompt) ?? defaultPrompt;
+            systemPrompt = systemPrompt.Trim();
+            if (!string.IsNullOrWhiteSpace(systemPrompt))
+            {
+                _visionClient.SystemPrompt = systemPrompt;
+            }
+
             // 可选：用户指定要截取的显示器（DeviceName，例如 \\.\DISPLAY1）
             var dev = MW.Set["screenmonitor"].GetString("monitor_device", null);
             _monitorDeviceName = string.IsNullOrWhiteSpace(dev) ? null : dev;
@@ -140,7 +150,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             // 读取暂停状态（GetBool 找不到时默认返回 false）
             _isPaused = MW.Set["screenmonitor"].GetBool("is_paused");
 
-            DebugLog($"应用设置：间隔毫秒={_monitorTimer.Interval} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)} 密钥={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<空>" : "<已设置>")} 接口={_visionClient.ApiEndpoint} 模型={_visionClient.ModelName} 暂停状态={_isPaused}");
+            DebugLog($"应用设置：间隔毫秒={_monitorTimer.Interval} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)} 密钥={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<空>" : "<已设置>")} 接口={_visionClient.ApiEndpoint} 模型={_visionClient.ModelName} 提示词长度={_visionClient.SystemPrompt.Length} 暂停状态={_isPaused}");
         }
 
         private async void OnMonitorTimerElapsed(object? sender, ElapsedEventArgs e)

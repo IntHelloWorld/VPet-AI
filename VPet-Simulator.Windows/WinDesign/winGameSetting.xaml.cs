@@ -39,6 +39,7 @@ namespace VPet_Simulator.Windows
         private const string ScreenMonitorSettingKeyApiKey = "API Key";
         private const string ScreenMonitorSettingKeyBaseUrl = "Base Url";
         private const string ScreenMonitorSettingKeyModelName = "Model Name";
+        private const string ScreenMonitorSettingKeySystemPrompt = "System Prompt";
         public winGameSetting(MainWindow mw)
         {
             this.mw = mw;
@@ -342,6 +343,10 @@ namespace VPet_Simulator.Windows
                 TbScreenMonitorApiKey.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyApiKey, string.Empty) ?? string.Empty;
                 TbScreenMonitorBaseUrl.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyBaseUrl, string.Empty) ?? string.Empty;
                 TbScreenMonitorModelName.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyModelName, string.Empty) ?? string.Empty;
+
+                // 读取系统提示词,如果没有设置则使用默认值
+                string defaultPrompt = "你是一个可爱的桌宠,正在观察用户的屏幕。请根据用户当前的活动窗口和屏幕截图,给出一段简短、有趣且符合桌宠身份的吐槽或鼓励。使用中文回复,字数控制在30字以内。";
+                TbScreenMonitorSystemPrompt.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeySystemPrompt, defaultPrompt) ?? defaultPrompt;
             }
             catch
             {
@@ -416,6 +421,14 @@ namespace VPet_Simulator.Windows
             if (!AllowChange)
                 return;
             mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyModelName, TbScreenMonitorModelName.Text?.Trim() ?? string.Empty);
+            ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void TbScreenMonitorSystemPrompt_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeySystemPrompt, TbScreenMonitorSystemPrompt.Text?.Trim() ?? string.Empty);
             ApplyScreenMonitorSettingsToPlugin();
         }
 

@@ -527,6 +527,7 @@
                             <RowDefinition Height="35" />
                             <RowDefinition Height="35" />
                             <RowDefinition Height="35" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="35" />
                             </Grid.RowDefinitions>
 
@@ -555,8 +556,15 @@
                                 Style="{DynamicResource StandardTextBoxStyle}"
                                 TextChanged="TbScreenMonitorModelName_TextChanged" />
 
-                            <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="{ll:Str 调试日志}" />
-                            <Button x:Name="BtnScreenMonitorOpenDebugLog" Grid.Row="5" Grid.Column="2" Height="30"
+                            <TextBlock Grid.Row="5" Margin="0,5,0,5" VerticalAlignment="Center" Text="{ll:Str 系统提示词}" />
+                            <TextBox x:Name="TbScreenMonitorSystemPrompt" Grid.Row="5" Grid.Column="2" FontSize="14"
+                                TextWrapping="Wrap" AcceptsReturn="True" Height="80" Margin="0,5,0,5"
+                                VerticalScrollBarVisibility="Auto"
+                                Style="{DynamicResource StandardTextBoxStyle}"
+                                TextChanged="TbScreenMonitorSystemPrompt_TextChanged" />
+
+                            <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="{ll:Str 调试日志}" />
+                            <Button x:Name="BtnScreenMonitorOpenDebugLog" Grid.Row="6" Grid.Column="2" Height="30"
                                 HorizontalAlignment="Left" pu:ButtonHelper.CornerRadius="4"
                                 Background="{DynamicResource SecondaryLight}"
                                 BorderBrush="{DynamicResource SecondaryDark}" BorderThickness="2"
