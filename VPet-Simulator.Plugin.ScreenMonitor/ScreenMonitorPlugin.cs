@@ -46,6 +46,8 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
 
         public override void LoadPlugin()
         {
+            // 仅在插件首次加载时读取保存的暂停状态
+            _isPaused = MW.Set["screenmonitor"].GetBool("is_paused");
             ApplySettingsFromMW();
             _monitorTimer.Start();
         }
@@ -119,7 +121,13 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             // 使用 Setting.lps 存储：MW.Set["screenmonitor"].interval_ms
             int intervalMs = MW.Set["screenmonitor"].GetInt("interval_ms", 10_000);
             intervalMs = Math.Clamp(intervalMs, 1_000, 3_600_000);
-            _monitorTimer.Interval = intervalMs;
+
+            // 只在间隔真正改变时才修改，避免重置正在运行的定时器
+            if ((int)_monitorTimer.Interval != intervalMs)
+            {
+                _monitorTimer.Interval = intervalMs;
+                DebugLog($"定时器间隔已更新：{intervalMs}ms");
+            }
 
             // API settings
             string apiKey = MW.Set["screenmonitor"].GetString(SettingKeyApiKey, string.Empty) ?? string.Empty;
@@ -154,8 +162,8 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             var dev = MW.Set["screenmonitor"].GetString("monitor_device", null);
             _monitorDeviceName = string.IsNullOrWhiteSpace(dev) ? null : dev;
 
-            // 读取暂停状态（GetBool 找不到时默认返回 false）
-            _isPaused = MW.Set["screenmonitor"].GetBool("is_paused");
+            // 注意：暂停状态 (_isPaused) 不在此处读取，只通过右键菜单控制
+            // 仅在插件首次加载时读取保存的暂停状态（见 LoadPlugin）
 
             // TTS 设置
             _ttsClient.Enabled = MW.Set["screenmonitor"].GetBool(SettingKeyTTSEnabled);
@@ -180,51 +188,56 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             }
 
             _isProcessing = true;
-            var activeWindowTitle = ActiveWindowHelper.GetActiveWindowTitle();
-            if (activeWindowTitle != _lastWindowTitle && !string.IsNullOrEmpty(activeWindowTitle) && activeWindowTitle != "Unknown")
+            try
             {
+                var activeWindowTitle = ActiveWindowHelper.GetActiveWindowTitle();
+                if (string.IsNullOrEmpty(activeWindowTitle) || activeWindowTitle == "Unknown")
+                {
+                    DebugLog("定时检测：无法获取窗口标题，跳过本次检测。");
+                    return; // finally 块会确保 _isProcessing 重置和定时器重启
+                }
+
+                // 记录窗口是否切换（用于日志）
+                bool windowChanged = activeWindowTitle != _lastWindowTitle;
                 _lastWindowTitle = activeWindowTitle;
-                DebugLog($"定时检测：窗口切换 -> '{activeWindowTitle}' 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)}");
-                
-                try
+                DebugLog($"定时检测：当前窗口 -> '{activeWindowTitle}' {(windowChanged ? "(已切换)" : "(未切换)")} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)}");
+
+                byte[]? imageBytes = await CaptureHelper.CaptureActiveWindowAsync(_monitorDeviceName);
+                if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    byte[]? imageBytes = await CaptureHelper.CaptureActiveWindowAsync(_monitorDeviceName);
-                    if (imageBytes == null || imageBytes.Length == 0)
-                    {
-                        DebugLogger.Log("截屏结果为空（无图像数据），跳过本次检测。");
-                        return;
-                    }
-                    if (imageBytes != null)
-                    {
-                        DebugLog($"定时检测：截屏字节数={imageBytes.Length}");
-                        string base64Image = Convert.ToBase64String(imageBytes);
-
-                        // 调用 AI 进行分析 (流式)
-                        var sayInfo = new SayInfoWithStream();
-
-                        // 订阅文本生成完成事件，用于 TTS
-                        sayInfo.Event_Finish += async (fullText) =>
-                        {
-                            await PlayTTSAsync(fullText);
-                        };
-
-                        MW.Main.Dispatcher.Invoke(() =>
-                        {
-                            MW.Main.SayRnd(sayInfo);
-                        });
-
-                        await _visionClient.AnalyzeImageStreamAsync(base64Image, activeWindowTitle, sayInfo);
-                    }
+                    DebugLogger.Log("截屏结果为空（无图像数据），跳过本次检测。");
+                    return; // finally 块会确保 _isProcessing 重置和定时器重启
                 }
-                catch (Exception ex)
+
+                DebugLog($"定时检测：截屏字节数={imageBytes.Length}");
+                string base64Image = Convert.ToBase64String(imageBytes);
+
+                // 调用 AI 进行分析 (流式)
+                var sayInfo = new SayInfoWithStream();
+
+                // 订阅文本生成完成事件，用于 TTS
+                sayInfo.Event_Finish += async (fullText) =>
                 {
-                    DebugLog("定时检测：异常 " + ex.GetType().Name + ": " + ex.Message);
-                    Console.WriteLine($"Screen Monitor Error: {ex.Message}");
-                }
+                    await PlayTTSAsync(fullText);
+                };
+
+                MW.Main.Dispatcher.Invoke(() =>
+                {
+                    MW.Main.SayRnd(sayInfo);
+                });
+
+                await _visionClient.AnalyzeImageStreamAsync(base64Image, activeWindowTitle, sayInfo);
             }
-
-            _isProcessing = false;
-            _monitorTimer.Start();
+            catch (Exception ex)
+            {
+                DebugLog("定时检测：异常 " + ex.GetType().Name + ": " + ex.Message);
+                Console.WriteLine($"Screen Monitor Error: {ex.Message}");
+            }
+            finally
+            {
+                _isProcessing = false;
+                _monitorTimer.Start();
+            }
         }
 
         /// <summary>
