@@ -529,6 +529,11 @@
                             <RowDefinition Height="35" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="35" />
+                            <RowDefinition Height="15" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="{ll:Str 监控频率(秒)}" />
@@ -542,9 +547,8 @@
                                 SelectionChanged="CbScreenMonitorMonitor_SelectionChanged" />
 
                             <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="{ll:Str API Key}" />
-                            <TextBox x:Name="TbScreenMonitorApiKey" Grid.Row="2" Grid.Column="2" FontSize="16"
-                                Style="{DynamicResource StandardTextBoxStyle}"
-                                TextChanged="TbScreenMonitorApiKey_TextChanged" />
+                            <PasswordBox x:Name="TbScreenMonitorApiKey" Grid.Row="2" Grid.Column="2" FontSize="16"
+                                PasswordChanged="TbScreenMonitorApiKey_PasswordChanged" />
 
                             <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="{ll:Str Base Url}" />
                             <TextBox x:Name="TbScreenMonitorBaseUrl" Grid.Row="3" Grid.Column="2" FontSize="16"
@@ -569,6 +573,24 @@
                                 Background="{DynamicResource SecondaryLight}"
                                 BorderBrush="{DynamicResource SecondaryDark}" BorderThickness="2"
                                 Click="BtnScreenMonitorOpenDebugLog_Click" Content="{ll:Str 打开调试日志}" />
+
+                            <TextBlock Grid.Row="8" Grid.ColumnSpan="3" VerticalAlignment="Center" FontWeight="Bold" Text="{ll:Str 语音合成 (TTS)}" />
+
+                            <TextBlock Grid.Row="9" VerticalAlignment="Center" Text="{ll:Str 启用TTS}" />
+                            <pu:Switch x:Name="SwitchTTSEnabled" Grid.Row="9" Grid.Column="2" HorizontalAlignment="Left"
+                                CheckedToggleBrush="{DynamicResource DARKPrimaryText}"
+                                ToggleBrush="{DynamicResource PrimaryDark}"
+                                ToggleShadowColor="{x:Null}" ToggleSize="14"
+                                Checked="SwitchTTSEnabled_Changed" Unchecked="SwitchTTSEnabled_Changed" />
+
+                            <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="{ll:Str TTS API Key}" />
+                            <PasswordBox x:Name="TbTTSApiKey" Grid.Row="10" Grid.Column="2" FontSize="16"
+                                PasswordChanged="TbTTSApiKey_PasswordChanged" />
+
+                            <TextBlock Grid.Row="11" VerticalAlignment="Center" Text="{ll:Str TTS音色}" />
+                            <ComboBox x:Name="CbTTSVoice" Grid.Row="11" Grid.Column="2" FontSize="16"
+                                Style="{DynamicResource StandardComboBoxStyle}"
+                                SelectionChanged="CbTTSVoice_SelectionChanged" />
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>

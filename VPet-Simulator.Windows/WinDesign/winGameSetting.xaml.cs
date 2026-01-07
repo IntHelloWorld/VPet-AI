@@ -40,6 +40,12 @@ namespace VPet_Simulator.Windows
         private const string ScreenMonitorSettingKeyBaseUrl = "Base Url";
         private const string ScreenMonitorSettingKeyModelName = "Model Name";
         private const string ScreenMonitorSettingKeySystemPrompt = "System Prompt";
+
+        // TTS 设置键
+        private const string ScreenMonitorSettingKeyTTSEnabled = "TTS Enabled";
+        private const string ScreenMonitorSettingKeyTTSApiKey = "TTS API Key";
+        private const string ScreenMonitorSettingKeyTTSVoice = "TTS Voice";
+
         public winGameSetting(MainWindow mw)
         {
             this.mw = mw;
@@ -303,6 +309,73 @@ namespace VPet_Simulator.Windows
             public override string ToString() => Display;
         }
 
+        /// <summary>
+        /// TTS 音色选项
+        /// </summary>
+        private sealed class TTSVoiceOption
+        {
+            public required string VoiceName { get; init; }  // 中文名
+            public required string VoiceParam { get; init; } // voice参数
+            public required string Description { get; init; } // 描述
+            public override string ToString() => $"{VoiceName} - {Description}";
+        }
+
+        /// <summary>
+        /// qwen3-tts 支持的所有音色列表
+        /// </summary>
+        private static readonly TTSVoiceOption[] TTSVoiceOptions = new[]
+        {
+            new TTSVoiceOption { VoiceName = "芊悦", VoiceParam = "Cherry", Description = "阳光积极、亲切自然小姐姐（女性）" },
+            new TTSVoiceOption { VoiceName = "苏瑶", VoiceParam = "Serena", Description = "温柔小姐姐（女性）" },
+            new TTSVoiceOption { VoiceName = "晨煦", VoiceParam = "Ethan", Description = "标准普通话，带部分北方口音。阳光、温暖、活力、朝气（男性）" },
+            new TTSVoiceOption { VoiceName = "千雪", VoiceParam = "Chelsie", Description = "二次元虚拟女友（女性）" },
+            new TTSVoiceOption { VoiceName = "茉兔", VoiceParam = "Momo", Description = "撒娇搞怪，逗你开心（女性）" },
+            new TTSVoiceOption { VoiceName = "十三", VoiceParam = "Vivian", Description = "拽拽的、可爱的小暴躁（女性）" },
+            new TTSVoiceOption { VoiceName = "月白", VoiceParam = "Moon", Description = "率性帅气的月白（男性）" },
+            new TTSVoiceOption { VoiceName = "四月", VoiceParam = "Maia", Description = "知性与温柔的碰撞（女性）" },
+            new TTSVoiceOption { VoiceName = "凯", VoiceParam = "Kai", Description = "耳朵的一场SPA（男性）" },
+            new TTSVoiceOption { VoiceName = "不吃鱼", VoiceParam = "Nofish", Description = "不会翘舌音的设计师（男性）" },
+            new TTSVoiceOption { VoiceName = "萌宝", VoiceParam = "Bella", Description = "喝酒不打醉拳的小萝莉（女性）" },
+            new TTSVoiceOption { VoiceName = "詹妮弗", VoiceParam = "Jennifer", Description = "品牌级、电影质感般美语女声（女性）" },
+            new TTSVoiceOption { VoiceName = "甜茶", VoiceParam = "Ryan", Description = "节奏拉满，戏感炸裂，真实与张力共舞（男性）" },
+            new TTSVoiceOption { VoiceName = "卡捷琳娜", VoiceParam = "Katerina", Description = "御姐音色，韵律回味十足（女性）" },
+            new TTSVoiceOption { VoiceName = "艾登", VoiceParam = "Aiden", Description = "精通厨艺的美语大男孩（男性）" },
+            new TTSVoiceOption { VoiceName = "沧明子", VoiceParam = "Eldric Sage", Description = "沉稳睿智的老者，沧桑如松却心明如镜（男性）" },
+            new TTSVoiceOption { VoiceName = "乖小妹", VoiceParam = "Mia", Description = "温顺如春水，乖巧如初雪（女性）" },
+            new TTSVoiceOption { VoiceName = "沙小弥", VoiceParam = "Mochi", Description = "聪明伶俐的小大人，童真未泯却早慧如禅（男性）" },
+            new TTSVoiceOption { VoiceName = "燕铮莺", VoiceParam = "Bellona", Description = "声音洪亮，吐字清晰，人物鲜活（女性）" },
+            new TTSVoiceOption { VoiceName = "田叔", VoiceParam = "Vincent", Description = "一口独特的沙哑烟嗓，道尽千军万马与江湖豪情（男性）" },
+            new TTSVoiceOption { VoiceName = "萌小姬", VoiceParam = "Bunny", Description = "\"萌属性\"爆棚的小萝莉（女性）" },
+            new TTSVoiceOption { VoiceName = "阿闻", VoiceParam = "Neil", Description = "平直的基线语调，字正腔圆的咬字发音（男性）" },
+            new TTSVoiceOption { VoiceName = "墨讲师", VoiceParam = "Elias", Description = "保持学科严谨性，将复杂知识转化为可消化的认知模块（女性）" },
+            new TTSVoiceOption { VoiceName = "徐大爷", VoiceParam = "Arthur", Description = "被岁月和旱烟浸泡过的质朴嗓音（男性）" },
+            new TTSVoiceOption { VoiceName = "邻家妹妹", VoiceParam = "Nini", Description = "糯米糍一样又软又黏的嗓音（女性）" },
+            new TTSVoiceOption { VoiceName = "诡婆婆", VoiceParam = "Ebona", Description = "低语像一把生锈的钥匙，缓慢转动你内心最深处的幽暗角落（女性）" },
+            new TTSVoiceOption { VoiceName = "小婉", VoiceParam = "Seren", Description = "温和舒缓的声线，助你更快地进入睡眠（女性）" },
+            new TTSVoiceOption { VoiceName = "顽屁小孩", VoiceParam = "Pip", Description = "调皮捣蛋却充满童真的他来了（男性）" },
+            new TTSVoiceOption { VoiceName = "少女阿月", VoiceParam = "Stella", Description = "甜到发腻的迷糊少女音（女性）" },
+            new TTSVoiceOption { VoiceName = "博德加", VoiceParam = "Bodega", Description = "热情的西班牙大叔（男性）" },
+            new TTSVoiceOption { VoiceName = "索尼莎", VoiceParam = "Sonrisa", Description = "热情开朗的拉美大姐（女性）" },
+            new TTSVoiceOption { VoiceName = "阿列克", VoiceParam = "Alek", Description = "战斗民族的冷，也是毛呢大衣下的暖（男性）" },
+            new TTSVoiceOption { VoiceName = "多尔切", VoiceParam = "Dolce", Description = "慵懒的意大利大叔（男性）" },
+            new TTSVoiceOption { VoiceName = "素熙", VoiceParam = "Sohee", Description = "温柔开朗，情绪丰富的韩国欧尼（女性）" },
+            new TTSVoiceOption { VoiceName = "小野杏", VoiceParam = "Ono Anna", Description = "鬼灵精怪的青梅竹马（女性）" },
+            new TTSVoiceOption { VoiceName = "莱恩", VoiceParam = "Lenn", Description = "理性是底色，叛逆藏在细节里——德国青年（男性）" },
+            new TTSVoiceOption { VoiceName = "埃米尔安", VoiceParam = "Emilien", Description = "浪漫的法国大哥哥（男性）" },
+            new TTSVoiceOption { VoiceName = "安德雷", VoiceParam = "Andre", Description = "声音磁性，自然舒服、沉稳男生（男性）" },
+            new TTSVoiceOption { VoiceName = "拉迪奥·戈尔", VoiceParam = "Radio Gol", Description = "足球诗人！用名字为你们解说足球（男性）" },
+            new TTSVoiceOption { VoiceName = "上海-阿珍", VoiceParam = "Jada", Description = "风风火火的沪上阿姐（女性）" },
+            new TTSVoiceOption { VoiceName = "北京-晓东", VoiceParam = "Dylan", Description = "北京胡同里长大的少年（男性）" },
+            new TTSVoiceOption { VoiceName = "南京-老李", VoiceParam = "Li", Description = "耐心的瑜伽老师（男性）" },
+            new TTSVoiceOption { VoiceName = "陕西-秦川", VoiceParam = "Marcus", Description = "面宽话短，心实声沉——老陕的味道（男性）" },
+            new TTSVoiceOption { VoiceName = "闽南-阿杰", VoiceParam = "Roy", Description = "诙谐直爽、市井活泼的台湾哥仔形象（男性）" },
+            new TTSVoiceOption { VoiceName = "天津-李彼得", VoiceParam = "Peter", Description = "天津相声，专业捧哏（男性）" },
+            new TTSVoiceOption { VoiceName = "四川-晴儿", VoiceParam = "Sunny", Description = "甜到你心里的川妹子（女性）" },
+            new TTSVoiceOption { VoiceName = "四川-程川", VoiceParam = "Eric", Description = "一个跳脱市井的四川成都男子（男性）" },
+            new TTSVoiceOption { VoiceName = "粤语-阿强", VoiceParam = "Rocky", Description = "幽默风趣的阿强，在线陪聊（男性）" },
+            new TTSVoiceOption { VoiceName = "粤语-阿清", VoiceParam = "Kiki", Description = "甜美的港妹闺蜜（女性）" },
+        };
+
         private void InitScreenMonitorSettingsUI()
         {
             try
@@ -340,13 +413,33 @@ namespace VPet_Simulator.Windows
                     CbScreenMonitorMonitor.SelectedItem = selected;
 
                 // API settings
-                TbScreenMonitorApiKey.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyApiKey, string.Empty) ?? string.Empty;
+                TbScreenMonitorApiKey.Password = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyApiKey, string.Empty) ?? string.Empty;
                 TbScreenMonitorBaseUrl.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyBaseUrl, string.Empty) ?? string.Empty;
                 TbScreenMonitorModelName.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyModelName, string.Empty) ?? string.Empty;
 
                 // 读取系统提示词,如果没有设置则使用默认值
                 string defaultPrompt = "你是一个可爱的桌宠,正在观察用户的屏幕。请根据用户当前的活动窗口和屏幕截图,给出一段简短、有趣且符合桌宠身份的吐槽或鼓励。使用中文回复,字数控制在30字以内。";
                 TbScreenMonitorSystemPrompt.Text = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeySystemPrompt, defaultPrompt) ?? defaultPrompt;
+
+                // TTS 设置
+                SwitchTTSEnabled.IsChecked = mw.Set["screenmonitor"].GetBool(ScreenMonitorSettingKeyTTSEnabled);
+                TbTTSApiKey.Password = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyTTSApiKey, string.Empty) ?? string.Empty;
+
+                // 填充 TTS 音色下拉菜单
+                CbTTSVoice.Items.Clear();
+                foreach (var voice in TTSVoiceOptions)
+                {
+                    CbTTSVoice.Items.Add(voice);
+                }
+
+                // 选择已保存的音色
+                string savedVoice = mw.Set["screenmonitor"].GetString(ScreenMonitorSettingKeyTTSVoice, "Cherry") ?? "Cherry";
+                var selectedVoice = TTSVoiceOptions.FirstOrDefault(v =>
+                    string.Equals(v.VoiceParam, savedVoice, StringComparison.OrdinalIgnoreCase));
+                if (selectedVoice != null)
+                    CbTTSVoice.SelectedItem = selectedVoice;
+                else if (CbTTSVoice.Items.Count > 0)
+                    CbTTSVoice.SelectedIndex = 0; // 默认选择第一个（芊悦/Cherry）
             }
             catch
             {
@@ -400,11 +493,11 @@ namespace VPet_Simulator.Windows
             ApplyScreenMonitorSettingsToPlugin();
         }
 
-        private void TbScreenMonitorApiKey_TextChanged(object sender, TextChangedEventArgs e)
+        private void TbScreenMonitorApiKey_PasswordChanged(object sender, RoutedEventArgs e)
         {
             if (!AllowChange)
                 return;
-            mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyApiKey, TbScreenMonitorApiKey.Text?.Trim() ?? string.Empty);
+            mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyApiKey, TbScreenMonitorApiKey.Password?.Trim() ?? string.Empty);
             ApplyScreenMonitorSettingsToPlugin();
         }
 
@@ -430,6 +523,33 @@ namespace VPet_Simulator.Windows
                 return;
             mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeySystemPrompt, TbScreenMonitorSystemPrompt.Text?.Trim() ?? string.Empty);
             ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void SwitchTTSEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set["screenmonitor"].SetBool(ScreenMonitorSettingKeyTTSEnabled, SwitchTTSEnabled.IsChecked == true);
+            ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void TbTTSApiKey_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyTTSApiKey, TbTTSApiKey.Password?.Trim() ?? string.Empty);
+            ApplyScreenMonitorSettingsToPlugin();
+        }
+
+        private void CbTTSVoice_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!AllowChange)
+                return;
+            if (CbTTSVoice.SelectedItem is TTSVoiceOption voice)
+            {
+                mw.Set["screenmonitor"].SetString(ScreenMonitorSettingKeyTTSVoice, voice.VoiceParam);
+                ApplyScreenMonitorSettingsToPlugin();
+            }
         }
 
         private void BtnScreenMonitorOpenDebugLog_Click(object sender, RoutedEventArgs e)

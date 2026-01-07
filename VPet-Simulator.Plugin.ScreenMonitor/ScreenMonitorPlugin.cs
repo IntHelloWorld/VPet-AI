@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using VPet_Simulator.Core;
@@ -15,11 +16,18 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
         private const string SettingKeyModelName = "Model Name";
         private const string SettingKeySystemPrompt = "System Prompt";
 
+        // TTS 设置键
+        private const string SettingKeyTTSEnabled = "TTS Enabled";
+        private const string SettingKeyTTSApiKey = "TTS API Key";
+        private const string SettingKeyTTSModel = "TTS Model";
+        private const string SettingKeyTTSVoice = "TTS Voice";
+
         private static void DebugLog(string message) => DebugLogger.Log("[插件] " + message);
 
         private System.Timers.Timer _monitorTimer;
         private string _lastWindowTitle = string.Empty;
         private VisionAPIClient _visionClient;
+        private TTSClient _ttsClient;
         private volatile bool _isProcessing;
         private string? _monitorDeviceName;
         private volatile bool _isPaused;
@@ -33,8 +41,7 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             _monitorTimer.Elapsed += OnMonitorTimerElapsed;
             _monitorTimer.AutoReset = false;
             _visionClient = new VisionAPIClient();
-            // 注意：实际使用时需要从设置中读取 API Key
-            // _visionClient.ApiKey = "YOUR_API_KEY"; 
+            _ttsClient = new TTSClient();
         }
 
         public override void LoadPlugin()
@@ -150,7 +157,18 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
             // 读取暂停状态（GetBool 找不到时默认返回 false）
             _isPaused = MW.Set["screenmonitor"].GetBool("is_paused");
 
-            DebugLog($"应用设置：间隔毫秒={_monitorTimer.Interval} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)} 密钥={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<空>" : "<已设置>")} 接口={_visionClient.ApiEndpoint} 模型={_visionClient.ModelName} 提示词长度={_visionClient.SystemPrompt.Length} 暂停状态={_isPaused}");
+            // TTS 设置
+            _ttsClient.Enabled = MW.Set["screenmonitor"].GetBool(SettingKeyTTSEnabled);
+            string ttsApiKey = MW.Set["screenmonitor"].GetString(SettingKeyTTSApiKey, string.Empty) ?? string.Empty;
+            _ttsClient.ApiKey = ttsApiKey.Trim();
+
+            string ttsModel = MW.Set["screenmonitor"].GetString(SettingKeyTTSModel, "qwen3-tts-flash") ?? "qwen3-tts-flash";
+            _ttsClient.ModelName = ttsModel.Trim();
+
+            string ttsVoice = MW.Set["screenmonitor"].GetString(SettingKeyTTSVoice, "Cherry") ?? "Cherry";
+            _ttsClient.Voice = ttsVoice.Trim();
+
+            DebugLog($"应用设置：间隔毫秒={_monitorTimer.Interval} 显示器={(string.IsNullOrWhiteSpace(_monitorDeviceName) ? "<未设置>" : _monitorDeviceName)} 密钥={(string.IsNullOrWhiteSpace(_visionClient.ApiKey) ? "<空>" : "<已设置>")} 接口={_visionClient.ApiEndpoint} 模型={_visionClient.ModelName} 提示词长度={_visionClient.SystemPrompt.Length} 暂停状态={_isPaused} TTS启用={_ttsClient.Enabled} TTS音色={_ttsClient.Voice}");
         }
 
         private async void OnMonitorTimerElapsed(object? sender, ElapsedEventArgs e)
@@ -180,9 +198,16 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
                     {
                         DebugLog($"定时检测：截屏字节数={imageBytes.Length}");
                         string base64Image = Convert.ToBase64String(imageBytes);
-                        
+
                         // 调用 AI 进行分析 (流式)
                         var sayInfo = new SayInfoWithStream();
+
+                        // 订阅文本生成完成事件，用于 TTS
+                        sayInfo.Event_Finish += async (fullText) =>
+                        {
+                            await PlayTTSAsync(fullText);
+                        };
+
                         MW.Main.Dispatcher.Invoke(() =>
                         {
                             MW.Main.SayRnd(sayInfo);
@@ -200,6 +225,56 @@ namespace VPet_Simulator.Plugin.ScreenMonitor
 
             _isProcessing = false;
             _monitorTimer.Start();
+        }
+
+        /// <summary>
+        /// 调用 TTS 合成并播放语音
+        /// </summary>
+        private async Task PlayTTSAsync(string text)
+        {
+            if (!_ttsClient.Enabled || string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            try
+            {
+                DebugLog($"开始 TTS 合成：{text.Substring(0, Math.Min(50, text.Length))}...");
+
+                var audioPath = await _ttsClient.SynthesizeToFileAsync(text);
+                if (!string.IsNullOrEmpty(audioPath))
+                {
+                    DebugLog($"TTS 合成成功，开始播放：{audioPath}");
+
+                    // 在 UI 线程上播放音频
+                    MW.Main.Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            MW.Main.PlayVoice(new Uri(audioPath));
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugLog($"播放音频失败：{ex.Message}");
+                        }
+                    });
+
+                    // 延迟删除临时文件（等待播放完成）
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(30000); // 等待 30 秒后删除
+                        TTSClient.CleanupTempFile(audioPath);
+                    });
+                }
+                else
+                {
+                    DebugLog("TTS 合成失败，未返回音频文件");
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLog($"TTS 播放异常：{ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         public override void EndGame()
